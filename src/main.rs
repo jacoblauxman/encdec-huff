@@ -1,13 +1,14 @@
+mod cli;
+mod huff;
+
 use clap::Parser;
+use cli::{Cli, Commands};
 use std::{
     collections::HashMap,
     fs::File,
     io::{BufReader, Read, Write},
     path::PathBuf,
 };
-
-mod cli;
-use cli::{Cli, Commands};
 
 fn main() -> Result<(), std::io::Error> {
     let input = Cli::parse();
@@ -52,7 +53,7 @@ fn print_char_counts(char_counts: &HashMap<u8, usize>) {
     let mut chars: Vec<(&u8, &usize)> = char_counts.iter().collect();
     chars.sort_by(|a, b| b.1.cmp(a.1));
 
-    println!("Characer Counts:");
+    println!("Characer Counts ({} in total):", chars.len());
     for (&byte, &count) in chars.iter() {
         let display_c = if byte.is_ascii_graphic() || byte.is_ascii_whitespace() {
             byte as char

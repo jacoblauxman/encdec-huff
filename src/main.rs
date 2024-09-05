@@ -1,19 +1,33 @@
+use clap::Parser;
 use std::{
     collections::HashMap,
     fs::File,
-    io::{BufReader, Read},
+    io::{BufReader, Read, Write},
     path::PathBuf,
 };
 
+mod cli;
+use cli::{Cli, Commands};
+
 fn main() -> Result<(), std::io::Error> {
-    let file_path = PathBuf::from("le-mis.txt");
-    let char_counts = count_characters(&file_path).expect("Should return char_counts");
-    print_char_counts(&char_counts);
+    let input = Cli::parse();
+
+    match &input.command {
+        Commands::CharCount { input, output } => {
+            println!("Count characters from {:?}...\n", input);
+            let char_counts = count_characters(&input)?;
+            print_char_counts(&char_counts);
+
+            if let Some(output_path) = output {
+                write_char_counts(&char_counts, &output_path)?;
+            }
+        }
+    }
 
     Ok(())
 }
 
-fn count_characters(input: &PathBuf) -> Result<HashMap<u8, usize>, String> {
+fn count_characters(input: &PathBuf) -> Result<HashMap<u8, usize>, std::io::Error> {
     let file = File::open(input).expect("Failed to read file input");
 
     let mut reader = BufReader::with_capacity(64 * 1024, file);
@@ -21,7 +35,7 @@ fn count_characters(input: &PathBuf) -> Result<HashMap<u8, usize>, String> {
     let mut char_counts = HashMap::new();
 
     loop {
-        let bytes_read = reader.read(&mut buffer).map_err(|e| e.to_string())?;
+        let bytes_read = reader.read(&mut buffer)?;
         if bytes_read == 0 {
             break;
         }
@@ -48,4 +62,27 @@ fn print_char_counts(char_counts: &HashMap<u8, usize>) {
 
         println!("{} (0x{:02X}): {}", display_c, byte, count);
     }
+}
+
+fn write_char_counts(
+    char_counts: &HashMap<u8, usize>,
+    output_path: &PathBuf,
+) -> Result<(), std::io::Error> {
+    let mut file = File::create(output_path)?;
+
+    for (&byte, &count) in char_counts.iter() {
+        writeln!(
+            file,
+            "{} (0x{:02X}): {}",
+            if byte.is_ascii_graphic() || byte.is_ascii_whitespace() {
+                byte as char
+            } else {
+                '�'
+            },
+            byte,
+            count
+        )?;
+    }
+
+    Ok(())
 }
